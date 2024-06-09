@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "283108926250",
+    "project_id": "psmtest-33edc",
+    "storage_bucket": "psmtest-33edc.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:283108926250:android:9c407ea2f5afaa5b4f3453",
+        "android_client_info": {
+          "package_name": "com.example.testnew"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB5BC9S34O-ewuZ0QpBDDKxwQx12Vvgz1A"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
