@@ -132,7 +132,7 @@ class _ViewItemsPageState extends State<ViewItemsPage> {
                           if (value == null || value.isEmpty) {
                             return 'Please enter contact information';
                           }
-                          if (value.length != 10 && value.length != 11) {
+                          if (value.length != 9 && value.length != 12) {
                             return 'Please enter a valid phone number';
                           }
                           return null;
