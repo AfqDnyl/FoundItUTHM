@@ -11,7 +11,7 @@ import 'package:testnew/assets/common_bg.dart';
 class AuctionChatPage extends StatefulWidget {
   final String itemId;
   final String contactInfo;
-  final String userId;
+  final String userId; // This should be the owner's userId
 
   AuctionChatPage({required this.itemId, required this.contactInfo, required this.userId});
 
@@ -46,12 +46,33 @@ class _AuctionChatPageState extends State<AuctionChatPage> {
         }
       }
     });
+
+    // Send congratulatory message if the current user is the owner
+    if (currentUser?.uid == widget.userId) {
+      _sendCongratulatoryMessage();
+    }
   }
 
   @override
   void dispose() {
     _subscription.cancel();
     super.dispose();
+  }
+
+  Future<void> _sendCongratulatoryMessage() async {
+    final chatDocs = await FirebaseFirestore.instance
+        .collection('chats')
+        .where('itemId', isEqualTo: widget.itemId)
+        .get();
+
+    bool hasSentMessage = chatDocs.docs.any((doc) => doc['messageContent'].contains('Congrats for winning the auction for'));
+
+    if (!hasSentMessage) {
+      DocumentSnapshot itemDoc = await FirebaseFirestore.instance.collection('found_items').doc(widget.itemId).get();
+      String itemName = itemDoc.exists ? itemDoc['itemName'] : 'the item';
+
+      _sendMessage('text', 'Congrats for winning the auction for $itemName! Please wait for the owner to respond to you.');
+    }
   }
 
   Future<String> _getUserName(String userId) async {

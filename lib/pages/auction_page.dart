@@ -182,6 +182,17 @@ class _AuctionPageState extends State<AuctionPage> {
                       'highestBidder': user!.uid,
                       'timestamp': FieldValue.serverTimestamp(),
                     });
+
+                    // Reset the timer to 30 seconds if the remaining time is less than 30 seconds
+                    final auctionEndTime = (foundItem['auctionEndTime'] as Timestamp).toDate();
+                    final remainingTime = auctionEndTime.difference(DateTime.now());
+                    if (remainingTime.inSeconds < 30) {
+                      final newEndTime = DateTime.now().add(Duration(seconds: 30));
+                      await FirebaseFirestore.instance
+                          .collection('found_items')
+                          .doc(foundItem.id)
+                          .update({'auctionEndTime': Timestamp.fromDate(newEndTime)});
+                    }
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text('Your bid must be higher than the current highest bid')),
@@ -218,8 +229,22 @@ class _AuctionCountdownTimerState extends State<AuctionCountdownTimer> {
   @override
   void initState() {
     super.initState();
-    final auctionStartTime = (widget.foundItem['auctionStartTime'] as Timestamp).toDate();
-    auctionEndTime = auctionStartTime.add(Duration(minutes: 1));
+    // Listen for updates to the auctionEndTime field
+    FirebaseFirestore.instance
+        .collection('found_items')
+        .doc(widget.foundItem.id)
+        .snapshots()
+        .listen((snapshot) {
+      final data = snapshot.data() as Map<String, dynamic>?;
+      if (data != null && data.containsKey('auctionEndTime')) {
+        setState(() {
+          auctionEndTime = (data['auctionEndTime'] as Timestamp).toDate();
+          remainingTime = auctionEndTime.difference(DateTime.now());
+        });
+      }
+    });
+
+    auctionEndTime = (widget.foundItem['auctionEndTime'] as Timestamp).toDate();
     remainingTime = auctionEndTime.difference(DateTime.now());
 
     _timer = Timer.periodic(Duration(seconds: 1), (timer) {

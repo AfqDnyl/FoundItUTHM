@@ -67,6 +67,7 @@ class _ReportFoundPageState extends State<ReportFoundPage> {
 
           DateTime now = DateTime.now();
           DateTime auctionStartTime = now.add(Duration(minutes: 5));
+          DateTime auctionEndTime = now.add(Duration(minutes: 6));
 
           Map<String, dynamic> foundItemData = {
             'userId': user.uid,
@@ -78,8 +79,8 @@ class _ReportFoundPageState extends State<ReportFoundPage> {
             'foundLocation': _location,
             'timestamp': FieldValue.serverTimestamp(),
             'auctionStartTime': auctionStartTime,
+            'auctionEndTime': auctionEndTime,
             'claimed': false,
-            'auctionCompleted': false,
             'paymentDone': false
           };
 
