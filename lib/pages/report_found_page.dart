@@ -35,12 +35,45 @@ class _ReportFoundPageState extends State<ReportFoundPage> {
   }
 
   Future<void> _pickImage() async {
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-    setState(() {
-      if (pickedFile != null) {
-        _image = File(pickedFile.path);
-      }
-    });
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Select Image Source'),
+          content: SingleChildScrollView(
+            child: ListBody(
+              children: <Widget>[
+                GestureDetector(
+                  child: Text('Gallery'),
+                  onTap: () async {
+                    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+                    setState(() {
+                      if (pickedFile != null) {
+                        _image = File(pickedFile.path);
+                      }
+                    });
+                    Navigator.of(context).pop();
+                  },
+                ),
+                Padding(padding: EdgeInsets.all(8.0)),
+                GestureDetector(
+                  child: Text('Camera'),
+                  onTap: () async {
+                    final pickedFile = await picker.pickImage(source: ImageSource.camera);
+                    setState(() {
+                      if (pickedFile != null) {
+                        _image = File(pickedFile.path);
+                      }
+                    });
+                    Navigator.of(context).pop();
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _reportFoundItem() async {
