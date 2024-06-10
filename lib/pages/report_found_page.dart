@@ -114,7 +114,8 @@ class _ReportFoundPageState extends State<ReportFoundPage> {
             'auctionStartTime': auctionStartTime,
             'auctionEndTime': auctionEndTime,
             'claimed': false,
-            'paymentDone': false
+            'paymentDone': false,
+            'announcementMade': false
           };
 
           await FirebaseFirestore.instance.collection('found_items').add(foundItemData);

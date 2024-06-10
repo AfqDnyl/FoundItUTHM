@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -20,6 +21,59 @@ class _AnnouncementPageState extends State<AnnouncementPage> {
   final ImagePicker _picker = ImagePicker();
   XFile? _imageFile;
   bool isLoading = false;
+  late Timer _auctionTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _startAuctionTimer();
+  }
+
+  @override
+  void dispose() {
+    _auctionTimer.cancel();
+    super.dispose();
+  }
+
+  Future<void> _startAuctionTimer() async {
+    _auctionTimer = Timer.periodic(Duration(seconds: 10), (timer) async {
+      await _fetchUpcomingAuctions();
+    });
+  }
+
+  Future<void> _fetchUpcomingAuctions() async {
+    final now = Timestamp.now();
+    final twoMinutesLater = Timestamp.fromDate(DateTime.now().add(Duration(minutes: 2)));
+
+    final querySnapshot = await FirebaseFirestore.instance
+        .collection('found_items')
+        .where('auctionStartTime', isGreaterThanOrEqualTo: now)
+        .where('auctionStartTime', isLessThanOrEqualTo: twoMinutesLater)
+        .where('claimed', isEqualTo: false)
+        .where('announcementMade', isEqualTo: false)
+        .get();
+
+    for (var doc in querySnapshot.docs) {
+      final data = doc.data();
+      final title = "Upcoming Auction for ${data['itemName']} at ${data['auctionStartTime'].toDate()}";
+      final notes = "${data['description']}";
+      final imageUrl = data.containsKey('imageUrl') ? data['imageUrl'] : null;
+
+      await FirebaseFirestore.instance.collection('announcements').add({
+        'name': 'Auction Bot',
+        'title': title,
+        'notes': notes,
+        'imageUrl': imageUrl,
+        'createdAt': FieldValue.serverTimestamp(),
+        'id': 'system',
+      });
+
+      // Mark the auction as announced
+      await FirebaseFirestore.instance.collection('found_items').doc(doc.id).update({
+        'announcementMade': true,
+      });
+    }
+  }
 
   Future<void> _postAnnouncement(BuildContext context) async {
     if (user == null) return;
@@ -235,16 +289,17 @@ class _AnnouncementPageState extends State<AnnouncementPage> {
             final announcement = announcements[index];
             final createdAt = (announcement['createdAt'] as Timestamp).toDate();
             final daysSincePosted = DateTime.now().difference(createdAt).inDays;
+            final imageUrl = (announcement.data() as Map<String, dynamic>).containsKey('imageUrl') ? announcement['imageUrl'] : '';
 
             return Card(
               elevation: 4,
               margin: EdgeInsets.all(8),
               child: ListTile(
-                leading: announcement['imageUrl'] != null
+                leading: imageUrl.isNotEmpty
                     ? GestureDetector(
-                        onTap: () => _viewImage(announcement['imageUrl']),
+                        onTap: () => _viewImage(imageUrl),
                         child: Image.network(
-                          announcement['imageUrl'],
+                          imageUrl,
                           height: 100,
                           width: 100,
                           fit: BoxFit.cover,
