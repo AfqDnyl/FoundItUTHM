@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:testnew/pages/chat_page.dart';
 import 'package:testnew/pages/login_or_signup.dart';
 import 'package:testnew/pages/profile_page.dart';
+import 'package:testnew/pages/announcement_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,6 +24,7 @@ class MyApp extends StatelessWidget {
       routes: {
         '/profile': (context) => ProfilePage(),
         '/chat': (context) => ChatPage(itemId: '', contactInfo: '', userId: ''),
+        '/announcements': (context) => AnnouncementPage(),
       },
     );
   }
