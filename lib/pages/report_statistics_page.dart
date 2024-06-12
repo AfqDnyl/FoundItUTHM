@@ -4,54 +4,156 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:testnew/assets/common_ab.dart';
 import 'package:testnew/assets/common_bg.dart';
 
-class ReportStatisticsPage extends StatelessWidget {
+class ReportStatisticsPage extends StatefulWidget {
+  @override
+  _ReportStatisticsPageState createState() => _ReportStatisticsPageState();
+}
+
+class _ReportStatisticsPageState extends State<ReportStatisticsPage> {
+  String searchQuery = '';
+  String selectedLocationFilter = 'All';
+  String selectedItemTypeFilter = 'All';
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: commonAppBar(context, 'Report Statistics'),
       body: CommonBackground(
-        child: StreamBuilder<QuerySnapshot>(
-          stream: FirebaseFirestore.instance.collection('lost_items').snapshots(),
-          builder: (context, lostSnapshot) {
-            if (lostSnapshot.connectionState == ConnectionState.waiting) {
-              return Center(child: CircularProgressIndicator());
-            }
+        child: Column(
+          children: [
+            _buildSearchBar(),
+            _buildFilters(),
+            Expanded(
+              child: StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance.collection('lost_items').snapshots(),
+                builder: (context, lostSnapshot) {
+                  if (lostSnapshot.connectionState == ConnectionState.waiting) {
+                    return Center(child: CircularProgressIndicator());
+                  }
 
-            if (!lostSnapshot.hasData || lostSnapshot.data!.docs.isEmpty) {
-              return Center(child: Text('No lost items found'));
-            }
+                  if (!lostSnapshot.hasData || lostSnapshot.data!.docs.isEmpty) {
+                    return Center(child: Text('No lost items found'));
+                  }
 
-            final lostItems = lostSnapshot.data!.docs;
+                  final lostItems = _applyFilters(lostSnapshot.data!.docs);
 
-            return StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance.collection('found_items').snapshots(),
-              builder: (context, foundSnapshot) {
-                if (foundSnapshot.connectionState == ConnectionState.waiting) {
-                  return Center(child: CircularProgressIndicator());
-                }
+                  return StreamBuilder<QuerySnapshot>(
+                    stream: FirebaseFirestore.instance.collection('found_items').snapshots(),
+                    builder: (context, foundSnapshot) {
+                      if (foundSnapshot.connectionState == ConnectionState.waiting) {
+                        return Center(child: CircularProgressIndicator());
+                      }
 
-                if (!foundSnapshot.hasData || foundSnapshot.data!.docs.isEmpty) {
-                  return Center(child: Text('No found items found'));
-                }
+                      if (!foundSnapshot.hasData || foundSnapshot.data!.docs.isEmpty) {
+                        return Center(child: Text('No found items found'));
+                      }
 
-                final foundItems = foundSnapshot.data!.docs;
+                      final foundItems = _applyFilters(foundSnapshot.data!.docs);
 
-                return ListView(
-                  children: [
-                    _buildPieChart(context, 'Place where item always reported lost', lostItems, 'lastLocation'),
-                    _buildPieChart(context, 'Place where item always reported found', foundItems, 'foundLocation'),
-                    _buildPieChart(context, 'Found and lost items reported by type of item', lostItems + foundItems, 'itemType'),
-                    _buildBarChart(context, 'Lost vs Found Items', lostItems, foundItems, ['Lost Items', 'Found Items']),
-                    _buildBarChart(context, 'Claimed vs Unclaimed Found Items', foundItems, null, ['Claimed Items', 'Unclaimed Items']),
-                    _buildBarChart(context, 'Found vs Unfound Lost Items', lostItems, null, ['Found Items', 'Unfound Items'], true),
-                  ],
-                );
-              },
-            );
-          },
+                      return ListView(
+                        children: [
+                          _buildPieChart(context, 'Place where item always reported lost', lostItems, 'lastLocation'),
+                          _buildPieChart(context, 'Place where item always reported found', foundItems, 'foundLocation'),
+                          _buildPieChart(context, 'Found and lost items reported by type of item', lostItems + foundItems, 'itemType'),
+                          _buildBarChart(context, 'Lost vs Found Items', lostItems, foundItems, ['Lost Items', 'Found Items']),
+                          _buildBarChart(context, 'Claimed vs Unclaimed Found Items', foundItems, null, ['Claimed Items', 'Unclaimed Items']),
+                          _buildBarChart(context, 'Found vs Unfound Lost Items', lostItems, null, ['Found Items', 'Unfound Items'], true),
+                        ],
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
         ),
       ),
     );
+  }
+
+  Widget _buildSearchBar() {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: TextField(
+        decoration: InputDecoration(
+          labelText: 'Search',
+          border: OutlineInputBorder(),
+          prefixIcon: Icon(Icons.search),
+        ),
+        onChanged: (value) {
+          setState(() {
+            searchQuery = value.toLowerCase();
+          });
+        },
+      ),
+    );
+  }
+
+  Widget _buildFilters() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      child: Column(
+        children: [
+          DropdownButtonFormField<String>(
+            decoration: InputDecoration(
+              labelText: 'Location',
+              border: OutlineInputBorder(),
+            ),
+            value: selectedLocationFilter,
+            items: ['All', 'DEWAN SULTAN IBRAHIM', 'MASJID SULTAN IBRAHIM', 'PERPUSTAKAAN TUN AMINAH',
+                    'FSKTM', 'FPTP', 'FPTV', 'FKAAB', 'FKEE', 'TASIK AREA', 'DEWAN F2',
+                    'PUSAT KESIHATAN UNIVERSITI', 'G3', 'B1', 'B7', 'B6', 'B8', 'C12', 'C11',
+                    'STADIUM', 'PADANG KAWAD', 'ATM UTHM', 'DEWAN PENYU', 'BADMINTON COURT',
+                    'KOLEJ TUN SYED NASIR', 'KOLEJ TUN FATIMAH', 'KOLEJ TUN DR ISMAIL']
+                .map((location) => DropdownMenuItem(
+                      value: location,
+                      child: Text(location),
+                    ))
+                .toList(),
+            onChanged: (value) {
+              setState(() {
+                selectedLocationFilter = value!;
+              });
+            },
+          ),
+          SizedBox(height: 16),
+          DropdownButtonFormField<String>(
+            decoration: InputDecoration(
+              labelText: 'Item Type',
+              border: OutlineInputBorder(),
+            ),
+            value: selectedItemTypeFilter,
+            items: ['All', 'Gadgets', 'Personal Items', 'Travel Items', 'Others', 'Documents', 'Clothing',
+                    'Accessories', 'Bags', 'Electronics', 'Sports Equipment', 'Books', 'Keys', 'Stationery', 'Toys']
+                .map((type) => DropdownMenuItem(
+                      value: type,
+                      child: Text(type),
+                    ))
+                .toList(),
+            onChanged: (value) {
+              setState(() {
+                selectedItemTypeFilter = value!;
+              });
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<DocumentSnapshot> _applyFilters(List<DocumentSnapshot> items) {
+    return items.where((item) {
+      final itemData = item.data() as Map<String, dynamic>?;
+      if (itemData == null) return false;
+
+      final location = itemData['lastLocation']?.toLowerCase() ?? '';
+      final itemType = itemData['itemType']?.toLowerCase() ?? '';
+      final matchesSearchQuery = searchQuery.isEmpty || itemData.values.any((value) => value.toString().toLowerCase().contains(searchQuery));
+      final matchesLocationFilter = selectedLocationFilter == 'All' || location == selectedLocationFilter.toLowerCase();
+      final matchesItemTypeFilter = selectedItemTypeFilter == 'All' || itemType == selectedItemTypeFilter.toLowerCase();
+
+      return matchesSearchQuery && matchesLocationFilter && matchesItemTypeFilter;
+    }).toList();
   }
 
   Widget _buildPieChart(BuildContext context, String title, List<DocumentSnapshot> items, String field) {
