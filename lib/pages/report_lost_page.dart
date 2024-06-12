@@ -162,7 +162,7 @@ class _ReportLostPageState extends State<ReportLostPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: commonAppBar(context, 'Report Lost Item'), // Use the common app bar
+      appBar: commonAppBar(context, 'Report Lost Item'),
       body: CommonBackground(
         child: Center(
           child: Padding(

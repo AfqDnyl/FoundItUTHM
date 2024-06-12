@@ -78,6 +78,13 @@ class _AnnouncementPageState extends State<AnnouncementPage> {
   Future<void> _postAnnouncement(BuildContext context) async {
     if (user == null) return;
 
+    if (_titleController.text.isEmpty || _notesController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Title and notes cannot be empty!')),
+      );
+      return;
+    }
+
     setState(() {
       isLoading = true;
     });
@@ -95,7 +102,7 @@ class _AnnouncementPageState extends State<AnnouncementPage> {
       'name': user!.displayName ?? 'Admin',
       'title': _titleController.text,
       'notes': _notesController.text,
-      'imageUrl': imageUrl,
+      'imageUrl': imageUrl ?? '',
       'createdAt': FieldValue.serverTimestamp(),
       'id': user!.uid,
     });
@@ -202,43 +209,52 @@ class _AnnouncementPageState extends State<AnnouncementPage> {
   }
 
   void _showPostAnnouncementDialog(BuildContext context) {
+    _titleController.text = '';
+    _notesController.text = '';
+    _imageFile = null;
+
     showDialog(
       context: context,
       builder: (context) {
-        _titleController.text = '';
-        _notesController.text = '';
-        _imageFile = null;
-        return AlertDialog(
-          title: Text('Post Announcement'),
-          content: SingleChildScrollView(
-            child: Column(
-              children: [
-                TextField(
-                  controller: _titleController,
-                  decoration: InputDecoration(labelText: 'Title'),
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setState) {
+            return AlertDialog(
+              title: Text('Post Announcement'),
+              content: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    TextField(
+                      controller: _titleController,
+                      decoration: InputDecoration(labelText: 'Title'),
+                      onChanged: (_) => setState(() {}),
+                    ),
+                    TextField(
+                      controller: _notesController,
+                      decoration: InputDecoration(labelText: 'Notes'),
+                      maxLines: 4,
+                      onChanged: (_) => setState(() {}),
+                    ),
+                    SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: _pickImage,
+                      child: Text('Select Image'),
+                    ),
+                    _imageFile == null
+                        ? Container()
+                        : Image.file(File(_imageFile!.path), height: 100, width: 100),
+                  ],
                 ),
-                TextField(
-                  controller: _notesController,
-                  decoration: InputDecoration(labelText: 'Notes'),
-                  maxLines: 4,
+              ),
+              actions: [
+                TextButton(
+                  onPressed: _titleController.text.isNotEmpty && _notesController.text.isNotEmpty
+                      ? () => _postAnnouncement(context)
+                      : null,
+                  child: Text('Post'),
                 ),
-                SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: _pickImage,
-                  child: Text('Select Image'),
-                ),
-                _imageFile == null
-                    ? Container()
-                    : Image.file(File(_imageFile!.path), height: 100, width: 100),
               ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => _postAnnouncement(context),
-              child: Text('Post'),
-            ),
-          ],
+            );
+          },
         );
       },
     );
@@ -287,9 +303,10 @@ class _AnnouncementPageState extends State<AnnouncementPage> {
           itemCount: announcements.length,
           itemBuilder: (context, index) {
             final announcement = announcements[index];
-            final createdAt = (announcement['createdAt'] as Timestamp).toDate();
+            final data = announcement.data() as Map<String, dynamic>;
+            final createdAt = data.containsKey('createdAt') ? (data['createdAt'] as Timestamp).toDate() : DateTime.now();
             final daysSincePosted = DateTime.now().difference(createdAt).inDays;
-            final imageUrl = (announcement.data() as Map<String, dynamic>).containsKey('imageUrl') ? announcement['imageUrl'] : '';
+            final imageUrl = data['imageUrl'] ?? '';
 
             return Card(
               elevation: 4,
@@ -321,7 +338,7 @@ class _AnnouncementPageState extends State<AnnouncementPage> {
                         children: [
                           IconButton(
                             icon: Icon(Icons.edit),
-                            onPressed: () => _editAnnouncement(announcement.id, announcement.data() as Map<String, dynamic>),
+                            onPressed: () => _editAnnouncement(announcement.id, data),
                           ),
                           IconButton(
                             icon: Icon(Icons.delete),

@@ -23,13 +23,45 @@ class _RegisterItemPageState extends State<RegisterItemPage> {
   final picker = ImagePicker();
   bool isLoading = false;
 
-  Future<void> _pickImage() async {
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+  Future<void> _pickImage(ImageSource source) async {
+    final pickedFile = await picker.pickImage(source: source);
     setState(() {
       if (pickedFile != null) {
         _image = File(pickedFile.path);
       }
     });
+  }
+
+  Future<void> _showPickImageDialog() async {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Choose Image Source'),
+          content: SingleChildScrollView(
+            child: ListBody(
+              children: <Widget>[
+                GestureDetector(
+                  child: Text('Gallery'),
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    _pickImage(ImageSource.gallery);
+                  },
+                ),
+                Padding(padding: EdgeInsets.all(8.0)),
+                GestureDetector(
+                  child: Text('Camera'),
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    _pickImage(ImageSource.camera);
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _uploadItem() async {
@@ -147,7 +179,7 @@ class _RegisterItemPageState extends State<RegisterItemPage> {
                           : Image.file(_image!, height: 100, width: 100),
                       Spacer(),
                       ElevatedButton(
-                        onPressed: _pickImage,
+                        onPressed: _showPickImageDialog,
                         child: Text('Select Image'),
                       ),
                     ],

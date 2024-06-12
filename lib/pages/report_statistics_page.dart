@@ -8,7 +8,7 @@ class ReportStatisticsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: commonAppBar(context, 'Report Statistics'), // Use the common app bar
+      appBar: commonAppBar(context, 'Report Statistics'),
       body: CommonBackground(
         child: StreamBuilder<QuerySnapshot>(
           stream: FirebaseFirestore.instance.collection('lost_items').snapshots(),
