@@ -61,6 +61,8 @@ dependencies:
   url_launcher: ^6.3.0
   string_similarity: ^2.0.0
   workmanager: ^0.5.2
+  pdf: ^3.10.8
+  printing: ^5.12.0
 
 dev_dependencies:
   flutter_test:

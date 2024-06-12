@@ -23,6 +23,7 @@ class _ReportStatisticsPageState extends State<ReportStatisticsPage> {
           children: [
             _buildSearchBar(),
             _buildFilters(),
+            _buildGenerateReportButton(),
             Expanded(
               child: StreamBuilder<QuerySnapshot>(
                 stream: FirebaseFirestore.instance.collection('lost_items').snapshots(),
@@ -100,16 +101,16 @@ class _ReportStatisticsPageState extends State<ReportStatisticsPage> {
               border: OutlineInputBorder(),
             ),
             value: selectedLocationFilter,
-            items: ['All', 'DEWAN SULTAN IBRAHIM', 'MASJID SULTAN IBRAHIM', 'PERPUSTAKAAN TUN AMINAH',
-                    'FSKTM', 'FPTP', 'FPTV', 'FKAAB', 'FKEE', 'TASIK AREA', 'DEWAN F2',
-                    'PUSAT KESIHATAN UNIVERSITI', 'G3', 'B1', 'B7', 'B6', 'B8', 'C12', 'C11',
-                    'STADIUM', 'PADANG KAWAD', 'ATM UTHM', 'DEWAN PENYU', 'BADMINTON COURT',
-                    'KOLEJ TUN SYED NASIR', 'KOLEJ TUN FATIMAH', 'KOLEJ TUN DR ISMAIL']
-                .map((location) => DropdownMenuItem(
-                      value: location,
-                      child: Text(location),
-                    ))
-                .toList(),
+            items: [
+              'All', 'DEWAN SULTAN IBRAHIM', 'MASJID SULTAN IBRAHIM', 'PERPUSTAKAAN TUN AMINAH',
+              'FSKTM', 'FPTP', 'FPTV', 'FKAAB', 'FKEE', 'TASIK AREA', 'DEWAN F2',
+              'PUSAT KESIHATAN UNIVERSITI', 'G3', 'B1', 'B7', 'B6', 'B8', 'C12', 'C11',
+              'STADIUM', 'PADANG KAWAD', 'ATM UTHM', 'DEWAN PENYU', 'BADMINTON COURT',
+              'KOLEJ TUN SYED NASIR', 'KOLEJ TUN FATIMAH', 'KOLEJ TUN DR ISMAIL'
+            ].map((location) => DropdownMenuItem(
+              value: location,
+              child: Text(location),
+            )).toList(),
             onChanged: (value) {
               setState(() {
                 selectedLocationFilter = value!;
@@ -123,13 +124,13 @@ class _ReportStatisticsPageState extends State<ReportStatisticsPage> {
               border: OutlineInputBorder(),
             ),
             value: selectedItemTypeFilter,
-            items: ['All', 'Gadgets', 'Personal Items', 'Travel Items', 'Others', 'Documents', 'Clothing',
-                    'Accessories', 'Bags', 'Electronics', 'Sports Equipment', 'Books', 'Keys', 'Stationery', 'Toys']
-                .map((type) => DropdownMenuItem(
-                      value: type,
-                      child: Text(type),
-                    ))
-                .toList(),
+            items: [
+              'All', 'Gadgets', 'Personal Items', 'Travel Items', 'Others', 'Documents', 'Clothing',
+              'Accessories', 'Bags', 'Electronics', 'Sports Equipment', 'Books', 'Keys', 'Stationery', 'Toys'
+            ].map((type) => DropdownMenuItem(
+              value: type,
+              child: Text(type),
+            )).toList(),
             onChanged: (value) {
               setState(() {
                 selectedItemTypeFilter = value!;
@@ -139,6 +140,68 @@ class _ReportStatisticsPageState extends State<ReportStatisticsPage> {
         ],
       ),
     );
+  }
+
+  Widget _buildGenerateReportButton() {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: ElevatedButton(
+        onPressed: _generateReport,
+        child: Text('Generate Report'),
+      ),
+    );
+  }
+
+  Future<void> _generateReport() async {
+    final lostItemsSnapshot = await FirebaseFirestore.instance.collection('lost_items').get();
+    final foundItemsSnapshot = await FirebaseFirestore.instance.collection('found_items').get();
+
+    final lostItems = _applyFilters(lostItemsSnapshot.docs);
+    final foundItems = _applyFilters(foundItemsSnapshot.docs);
+
+    final itemTypeReport = _generateTopReport(lostItems + foundItems, 'itemType');
+    final locationReport = _generateTopReport(lostItems + foundItems, 'lastLocation');
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Report'),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Top 3 Item Types:'),
+              ...itemTypeReport.entries.map((entry) => Text('${entry.key}: ${entry.value}')),
+              SizedBox(height: 16),
+              Text('Top 3 Locations:'),
+              ...locationReport.entries.map((entry) => Text('${entry.key}: ${entry.value}')),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Map<String, int> _generateTopReport(List<DocumentSnapshot> items, String field) {
+    final Map<String, int> dataMap = {};
+    for (var item in items) {
+      final itemData = item.data() as Map<String, dynamic>?;
+      String value = itemData?.containsKey(field) == true ? itemData![field] : 'Unknown';
+      if (!dataMap.containsKey(value)) {
+        dataMap[value] = 0;
+      }
+      dataMap[value] = dataMap[value]! + 1;
+    }
+
+    final sortedEntries = dataMap.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    return Map.fromEntries(sortedEntries.take(3));
   }
 
   List<DocumentSnapshot> _applyFilters(List<DocumentSnapshot> items) {

@@ -16,14 +16,26 @@ class ViewLostItemsPage extends StatefulWidget {
 }
 
 class _ViewLostItemsPageState extends State<ViewLostItemsPage> {
+  final TextEditingController _searchController = TextEditingController();
   final TextEditingController _itemNameController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _contactInfoController = TextEditingController();
-  String _itemType = 'Gadgets';
+  String _itemType = 'All';
+  String _location = 'All';
+  String _postOwner = 'All';
   File? _image;
   final picker = ImagePicker();
   bool isLoading = false;
   final _formKey = GlobalKey<FormState>();
+
+  List<String> itemTypes = ['All', 'Gadgets', 'Personal Items', 'Travel Items', 'Others', 'Documents', 'Clothing',
+    'Accessories', 'Bags', 'Electronics', 'Sports Equipment', 'Books', 'Keys', 'Stationery', 'Toys'];
+
+  List<String> locations = ['All', 'DEWAN SULTAN IBRAHIM', 'MASJID SULTAN IBRAHIM', 'PERPUSTAKAAN TUN AMINAH',
+    'FSKTM', 'FPTP', 'FPTV', 'FKAAB', 'FKEE', 'TASIK AREA', 'DEWAN F2',
+    'PUSAT KESIHATAN UNIVERSITI', 'G3', 'B1', 'B7', 'B6', 'B8', 'C12', 'C11',
+    'STADIUM', 'PADANG KAWAD', 'ATM UTHM', 'DEWAN PENYU', 'BADMINTON COURT',
+    'KOLEJ TUN SYED NASIR', 'KOLEJ TUN FATIMAH', 'KOLEJ TUN DR ISMAIL'];
 
   Future<void> _pickImage() async {
     final pickedFile = await picker.pickImage(source: ImageSource.gallery);
@@ -146,10 +158,7 @@ class _ViewLostItemsPageState extends State<ViewLostItemsPage> {
                             _itemType = newValue!;
                           });
                         },
-                        items: <String>[
-                          'Gadgets', 'Personal Items', 'Travel Items', 'Others', 'Documents', 'Clothing',
-                          'Accessories', 'Bags', 'Electronics', 'Sports Equipment', 'Books', 'Keys', 'Stationery', 'Toys'
-                        ].map<DropdownMenuItem<String>>((String value) {
+                        items: itemTypes.map<DropdownMenuItem<String>>((String value) {
                           return DropdownMenuItem<String>(
                             value: value,
                             child: Text(value),
@@ -205,115 +214,218 @@ class _ViewLostItemsPageState extends State<ViewLostItemsPage> {
     return Scaffold(
       appBar: commonAppBar(context, 'Lost Items'), // Use the common app bar
       body: CommonBackground(
-        child: StreamBuilder<QuerySnapshot>(
-          stream: FirebaseFirestore.instance.collection('lost_items').where('hasFound', isEqualTo: false).snapshots(),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return Center(child: CircularProgressIndicator());
-            } else if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-              return Center(child: Text('No lost items reported.'));
-            } else {
-              final lostItems = snapshot.data!.docs;
-              return ListView.builder(
-                itemCount: lostItems.length,
-                itemBuilder: (context, index) {
-                  final item = lostItems[index];
-                  final data = item.data() as Map<String, dynamic>?;
-                  final contactInfo = data?.containsKey('contactInfo') == true ? data!['contactInfo'] : 'No contact info';
-                  final isOwner = currentUser?.uid == data!['userId'];
-                  final timestamp = data['timestamp'] as Timestamp?;
+        child: Column(
+          children: [
+            _buildSearchAndFilters(),
+            Expanded(
+              child: StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance.collection('lost_items').where('hasFound', isEqualTo: false).snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return Center(child: CircularProgressIndicator());
+                  } else if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                    return Center(child: Text('No lost items reported.'));
+                  } else {
+                    final lostItems = _applyFilters(snapshot.data!.docs);
+                    return ListView.builder(
+                      itemCount: lostItems.length,
+                      itemBuilder: (context, index) {
+                        final item = lostItems[index];
+                        final data = item.data() as Map<String, dynamic>?;
+                        final contactInfo = data?.containsKey('contactInfo') == true ? data!['contactInfo'] : 'No contact info';
+                        final isOwner = currentUser?.uid == data!['userId'];
+                        final timestamp = data['timestamp'] as Timestamp?;
 
-                  return Card(
-                    elevation: 4,
-                    margin: EdgeInsets.all(8),
-                    child: Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Row(
-                        children: [
-                          GestureDetector(
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => ImageZoomPage(imageUrl: data['imageUrl']),
-                                ),
-                              );
-                            },
-                            child: Image.network(
-                              data['imageUrl'],
-                              height: 100,
-                              width: 100,
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-                          SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                        return Card(
+                          elevation: 4,
+                          margin: EdgeInsets.all(8),
+                          child: Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Row(
                               children: [
-                                Text(data['itemName'], style: TextStyle(fontWeight: FontWeight.bold)),
-                                SizedBox(height: 4),
-                                Text('Description: ${data['description']}'),
-                                SizedBox(height: 4),
-                                Text('Contact Info: $contactInfo'),
-                                SizedBox(height: 4),
-                                Text('Location: ${data['lastLocation']}'),
-                                SizedBox(height: 4),
-                                Text('Item Type: ${data['itemType']}'),
-                                SizedBox(height: 4),
-                                Text('Reported on: ${timestamp?.toDate().toString() ?? 'Unknown'}'),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.end,
-                                  children: [
-                                    IconButton(
-                                      icon: Icon(Icons.chat),
-                                      onPressed: () {
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (context) => ChatPage(
-                                              itemId: item.id,
-                                              contactInfo: contactInfo,
-                                              userId: data['userId'],
-                                            ),
+                                GestureDetector(
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => ImageZoomPage(imageUrl: data['imageUrl']),
+                                      ),
+                                    );
+                                  },
+                                  child: Image.network(
+                                    data['imageUrl'],
+                                    height: 100,
+                                    width: 100,
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                                SizedBox(width: 16),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(data['itemName'], style: TextStyle(fontWeight: FontWeight.bold)),
+                                      SizedBox(height: 4),
+                                      Text('Description: ${data['description']}'),
+                                      SizedBox(height: 4),
+                                      Text('Contact Info: $contactInfo'),
+                                      SizedBox(height: 4),
+                                      Text('Location: ${data['lastLocation']}'),
+                                      SizedBox(height: 4),
+                                      Text('Item Type: ${data['itemType']}'),
+                                      SizedBox(height: 4),
+                                      Text('Reported on: ${timestamp?.toDate().toString() ?? 'Unknown'}'),
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.end,
+                                        children: [
+                                          IconButton(
+                                            icon: Icon(Icons.chat),
+                                            onPressed: () {
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (context) => ChatPage(
+                                                    itemId: item.id,
+                                                    contactInfo: contactInfo,
+                                                    userId: data['userId'],
+                                                  ),
+                                                ),
+                                              );
+                                            },
                                           ),
-                                        );
-                                      },
-                                    ),
-                                    if (isOwner)
-                                      IconButton(
-                                        icon: Icon(Icons.edit),
-                                        onPressed: () => _showEditItemDialog(item),
+                                          if (isOwner)
+                                            IconButton(
+                                              icon: Icon(Icons.edit),
+                                              onPressed: () => _showEditItemDialog(item),
+                                            ),
+                                          if (isOwner)
+                                            IconButton(
+                                              icon: Icon(Icons.delete),
+                                              onPressed: () => _deleteItem(item.id),
+                                            ),
+                                          if (isOwner)
+                                            IconButton(
+                                              icon: Icon(Icons.check),
+                                              onPressed: () async {
+                                                await FirebaseFirestore.instance.collection('lost_items').doc(item.id).update({'hasFound': true});
+                                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Item marked as found')));
+                                              },
+                                            ),
+                                        ],
                                       ),
-                                    if (isOwner)
-                                      IconButton(
-                                        icon: Icon(Icons.delete),
-                                        onPressed: () => _deleteItem(item.id),
-                                      ),
-                                    if (isOwner)
-                                      IconButton(
-                                        icon: Icon(Icons.check),
-                                        onPressed: () async {
-                                          await FirebaseFirestore.instance.collection('lost_items').doc(item.id).update({'hasFound': true});
-                                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Item marked as found')));
-                                        },
-                                      ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
                               ],
                             ),
                           ),
-                        ],
-                      ),
-                    ),
-                  );
+                        );
+                      },
+                    );
+                  }
                 },
-              );
-            }
-          },
+              ),
+            ),
+          ],
         ),
       ),
     );
+  }
+
+  Widget _buildSearchAndFilters() {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        children: [
+          TextField(
+            controller: _searchController,
+            decoration: InputDecoration(
+              labelText: 'Search',
+              border: OutlineInputBorder(),
+              prefixIcon: Icon(Icons.search),
+            ),
+            onChanged: (value) {
+              setState(() {});
+            },
+          ),
+          SizedBox(height: 16),
+          DropdownButtonFormField<String>(
+            decoration: InputDecoration(
+              labelText: 'Location',
+              border: OutlineInputBorder(),
+            ),
+            value: _location,
+            items: locations.map((location) => DropdownMenuItem(
+              value: location,
+              child: Text(location),
+            )).toList(),
+            onChanged: (value) {
+              setState(() {
+                _location = value!;
+              });
+            },
+          ),
+          SizedBox(height: 16),
+          DropdownButtonFormField<String>(
+            decoration: InputDecoration(
+              labelText: 'Item Type',
+              border: OutlineInputBorder(),
+            ),
+            value: _itemType,
+            items: itemTypes.map((type) => DropdownMenuItem(
+              value: type,
+              child: Text(type),
+            )).toList(),
+            onChanged: (value) {
+              setState(() {
+                _itemType = value!;
+              });
+            },
+          ),
+          SizedBox(height: 16),
+          DropdownButtonFormField<String>(
+            decoration: InputDecoration(
+              labelText: 'Post Owner',
+              border: OutlineInputBorder(),
+            ),
+            value: _postOwner,
+            items: ['All', 'Own Post', 'Not Own'].map((type) => DropdownMenuItem(
+              value: type,
+              child: Text(type),
+            )).toList(),
+            onChanged: (value) {
+              setState(() {
+                _postOwner = value!;
+              });
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<DocumentSnapshot> _applyFilters(List<DocumentSnapshot> items) {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    return items.where((item) {
+      final itemData = item.data() as Map<String, dynamic>?;
+      if (itemData == null) return false;
+
+      final location = itemData['lastLocation'] ?? '';
+      final itemType = itemData['itemType'] ?? '';
+      final postOwner = itemData['userId'] ?? '';
+      final itemName = itemData['itemName'] ?? '';
+      final description = itemData['description'] ?? '';
+
+      final matchesSearch = itemName.toLowerCase().contains(_searchController.text.toLowerCase()) ||
+          description.toLowerCase().contains(_searchController.text.toLowerCase());
+      final matchesLocation = _location == 'All' || location == _location;
+      final matchesItemType = _itemType == 'All' || itemType == _itemType;
+      final matchesPostOwner = _postOwner == 'All' ||
+          (_postOwner == 'Own Post' && postOwner == currentUser?.uid) ||
+          (_postOwner == 'Not Own' && postOwner != currentUser?.uid);
+
+      return matchesSearch && matchesLocation && matchesItemType && matchesPostOwner;
+    }).toList();
   }
 }
 
