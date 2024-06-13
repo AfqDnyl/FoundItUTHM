@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:flutter/rendering.dart';
+import 'package:pdf/pdf.dart';
 import 'package:testnew/assets/common_ab.dart';
 import 'package:testnew/assets/common_bg.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
+import 'dart:ui' as ui;
 
 class ReportStatisticsPage extends StatefulWidget {
   @override
@@ -13,6 +19,26 @@ class _ReportStatisticsPageState extends State<ReportStatisticsPage> {
   String searchQuery = '';
   String selectedLocationFilter = 'All';
   String selectedItemTypeFilter = 'All';
+  bool isAdmin = false;
+  final User? user = FirebaseAuth.instance.currentUser;
+
+  final GlobalKey _itemTypeChartKey = GlobalKey();
+  final GlobalKey _locationChartKey = GlobalKey();
+
+  @override
+  void initState() {
+    super.initState();
+    _checkAdminStatus();
+  }
+
+  Future<void> _checkAdminStatus() async {
+    if (user != null) {
+      final docSnapshot = await FirebaseFirestore.instance.collection('users').doc(user!.uid).get();
+      setState(() {
+        isAdmin = docSnapshot.data()?['role'] == 'admin';
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -23,7 +49,7 @@ class _ReportStatisticsPageState extends State<ReportStatisticsPage> {
           children: [
             _buildSearchBar(),
             _buildFilters(),
-            _buildGenerateReportButton(),
+            if (isAdmin) _buildGenerateReportButton(),
             Expanded(
               child: StreamBuilder<QuerySnapshot>(
                 stream: FirebaseFirestore.instance.collection('lost_items').snapshots(),
@@ -53,9 +79,14 @@ class _ReportStatisticsPageState extends State<ReportStatisticsPage> {
 
                       return ListView(
                         children: [
-                          _buildPieChart(context, 'Place where item always reported lost', lostItems, 'lastLocation'),
-                          _buildPieChart(context, 'Place where item always reported found', foundItems, 'foundLocation'),
-                          _buildPieChart(context, 'Found and lost items reported by type of item', lostItems + foundItems, 'itemType'),
+                          RepaintBoundary(
+                            key: _itemTypeChartKey,
+                            child: _buildPieChart(context, 'Item Types Reported', lostItems + foundItems, 'itemType'),
+                          ),
+                          RepaintBoundary(
+                            key: _locationChartKey,
+                            child: _buildPieChart(context, 'Locations Reported', lostItems, 'lastLocation', foundItems, 'foundLocation'),
+                          ),
                           _buildBarChart(context, 'Lost vs Found Items', lostItems, foundItems, ['Lost Items', 'Found Items']),
                           _buildBarChart(context, 'Claimed vs Unclaimed Found Items', foundItems, null, ['Claimed Items', 'Unclaimed Items']),
                           _buildBarChart(context, 'Found vs Unfound Lost Items', lostItems, null, ['Found Items', 'Unfound Items'], true),
@@ -160,7 +191,10 @@ class _ReportStatisticsPageState extends State<ReportStatisticsPage> {
     final foundItems = _applyFilters(foundItemsSnapshot.docs);
 
     final itemTypeReport = _generateTopReport(lostItems + foundItems, 'itemType');
-    final locationReport = _generateTopReport(lostItems + foundItems, 'lastLocation');
+    final combinedLocationReport = _generateCombinedLocationReport(lostItems, foundItems);
+
+    final itemTypeChartImage = await _capturePng(_itemTypeChartKey);
+    final locationChartImage = await _capturePng(_locationChartKey);
 
     showDialog(
       context: context,
@@ -170,11 +204,11 @@ class _ReportStatisticsPageState extends State<ReportStatisticsPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Top 3 Item Types:'),
+              Text('Top 3 Item Types Reported as Lost and Found Cases:'),
               ...itemTypeReport.entries.map((entry) => Text('${entry.key}: ${entry.value}')),
               SizedBox(height: 16),
-              Text('Top 3 Locations:'),
-              ...locationReport.entries.map((entry) => Text('${entry.key}: ${entry.value}')),
+              Text('Top 3 Locations Reported Lost and Found Cases:'),
+              ...combinedLocationReport.entries.map((entry) => Text('${entry.key}: ${entry.value}')),
             ],
           ),
         ),
@@ -183,9 +217,86 @@ class _ReportStatisticsPageState extends State<ReportStatisticsPage> {
             onPressed: () => Navigator.pop(context),
             child: Text('Close'),
           ),
+          TextButton(
+            onPressed: () => _saveReportAsPdf(itemTypeReport, combinedLocationReport, itemTypeChartImage, locationChartImage),
+            child: Text('Save as PDF'),
+          ),
         ],
       ),
     );
+  }
+
+  Future<void> _saveReportAsPdf(Map<String, int> itemTypeReport, Map<String, int> locationReport, ui.Image itemTypeChartImage, ui.Image locationChartImage) async {
+    final pdf = pw.Document();
+
+    final itemTypeImage = pw.MemoryImage((await itemTypeChartImage.toByteData(format: ui.ImageByteFormat.png))!.buffer.asUint8List());
+    final locationImage = pw.MemoryImage((await locationChartImage.toByteData(format: ui.ImageByteFormat.png))!.buffer.asUint8List());
+
+    pdf.addPage(
+      pw.Page(
+        build: (pw.Context context) => pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            pw.Text('Report', style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold)),
+            pw.SizedBox(height: 16),
+            pw.Text('Top 3 Item Types Reported as Lost and Found Cases:'),
+            ...itemTypeReport.entries.map((entry) => pw.Text('${entry.key}: ${entry.value}')),
+            pw.SizedBox(height: 16),
+            pw.Image(itemTypeImage),
+          ],
+        ),
+      ),
+    );
+
+    pdf.addPage(
+      pw.Page(
+        build: (pw.Context context) => pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            pw.Text('Top 3 Locations Reported Lost and Found Cases:'),
+            ...locationReport.entries.map((entry) => pw.Text('${entry.key}: ${entry.value}')),
+            pw.SizedBox(height: 16),
+            pw.Image(locationImage),
+          ],
+        ),
+      ),
+    );
+
+    await Printing.layoutPdf(
+      onLayout: (PdfPageFormat format) async => pdf.save(),
+    );
+  }
+
+  Future<ui.Image> _capturePng(GlobalKey key) async {
+    RenderRepaintBoundary boundary = key.currentContext!.findRenderObject() as RenderRepaintBoundary;
+    ui.Image image = await boundary.toImage(pixelRatio: 3.0);
+    return image;
+  }
+
+  Map<String, int> _generateCombinedLocationReport(List<DocumentSnapshot> lostItems, List<DocumentSnapshot> foundItems) {
+    final Map<String, int> dataMap = {};
+
+    for (var item in lostItems) {
+      final itemData = item.data() as Map<String, dynamic>?;
+      String value = itemData?.containsKey('lastLocation') == true ? itemData!['lastLocation'] : 'Unknown';
+      if (!dataMap.containsKey(value)) {
+        dataMap[value] = 0;
+      }
+      dataMap[value] = dataMap[value]! + 1;
+    }
+
+    for (var item in foundItems) {
+      final itemData = item.data() as Map<String, dynamic>?;
+      String value = itemData?.containsKey('foundLocation') == true ? itemData!['foundLocation'] : 'Unknown';
+      if (!dataMap.containsKey(value)) {
+        dataMap[value] = 0;
+      }
+      dataMap[value] = dataMap[value]! + 1;
+    }
+
+    final sortedEntries = dataMap.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    return Map.fromEntries(sortedEntries.take(3));
   }
 
   Map<String, int> _generateTopReport(List<DocumentSnapshot> items, String field) {
@@ -219,8 +330,9 @@ class _ReportStatisticsPageState extends State<ReportStatisticsPage> {
     }).toList();
   }
 
-  Widget _buildPieChart(BuildContext context, String title, List<DocumentSnapshot> items, String field) {
+  Widget _buildPieChart(BuildContext context, String title, List<DocumentSnapshot> items, String field, [List<DocumentSnapshot>? additionalItems, String? additionalField]) {
     final Map<String, int> dataMap = {};
+
     for (var item in items) {
       final itemData = item.data() as Map<String, dynamic>?;
       String value = itemData?.containsKey(field) == true ? itemData![field] : 'Unknown';
@@ -228,6 +340,17 @@ class _ReportStatisticsPageState extends State<ReportStatisticsPage> {
         dataMap[value] = 0;
       }
       dataMap[value] = dataMap[value]! + 1;
+    }
+
+    if (additionalItems != null && additionalField != null) {
+      for (var item in additionalItems) {
+        final itemData = item.data() as Map<String, dynamic>?;
+        String value = itemData?.containsKey(additionalField) == true ? itemData![additionalField] : 'Unknown';
+        if (!dataMap.containsKey(value)) {
+          dataMap[value] = 0;
+        }
+        dataMap[value] = dataMap[value]! + 1;
+      }
     }
 
     final pieSections = dataMap.entries.map((entry) {

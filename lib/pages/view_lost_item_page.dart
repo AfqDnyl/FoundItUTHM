@@ -90,6 +90,65 @@ class _ViewLostItemsPageState extends State<ViewLostItemsPage> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Item deleted successfully!')));
   }
 
+  Future<void> _confirmDeleteItem(String itemId) async {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text("Delete Item"),
+          content: Text("Are you sure you want to delete this item?"),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text("Cancel"),
+            ),
+            TextButton(
+              onPressed: () {
+                _deleteItem(itemId);
+                Navigator.of(context).pop();
+              },
+              child: Text("Delete"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _markAsFound(String itemId) async {
+    await FirebaseFirestore.instance.collection('lost_items').doc(itemId).update({'hasFound': true});
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Item marked as found')));
+  }
+
+  Future<void> _confirmMarkAsFound(String itemId) async {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text("Mark as Found"),
+          content: Text("Are you sure you want to mark this item as found?"),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text("Cancel"),
+            ),
+            TextButton(
+              onPressed: () {
+                _markAsFound(itemId);
+                Navigator.of(context).pop();
+              },
+              child: Text("Mark as Found"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   void _showEditItemDialog(DocumentSnapshot item) {
     final data = item.data() as Map<String, dynamic>;
 
@@ -301,15 +360,12 @@ class _ViewLostItemsPageState extends State<ViewLostItemsPage> {
                                           if (isOwner)
                                             IconButton(
                                               icon: Icon(Icons.delete),
-                                              onPressed: () => _deleteItem(item.id),
+                                              onPressed: () => _confirmDeleteItem(item.id),
                                             ),
                                           if (isOwner)
                                             IconButton(
                                               icon: Icon(Icons.check),
-                                              onPressed: () async {
-                                                await FirebaseFirestore.instance.collection('lost_items').doc(item.id).update({'hasFound': true});
-                                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Item marked as found')));
-                                              },
+                                              onPressed: () => _confirmMarkAsFound(item.id),
                                             ),
                                         ],
                                       ),

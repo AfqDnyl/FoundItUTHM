@@ -77,6 +77,29 @@ class _ViewItemsPageState extends State<ViewItemsPage> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Item deleted successfully!')));
   }
 
+  void _confirmDeleteItem(String itemId) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Delete Item'),
+        content: Text('Are you sure you want to delete this item?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              await _deleteItem(itemId);
+            },
+            child: Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showEditItemDialog(DocumentSnapshot item) {
     final data = item.data() as Map<String, dynamic>;
 
@@ -248,7 +271,7 @@ class _ViewItemsPageState extends State<ViewItemsPage> {
                             ),
                             IconButton(
                               icon: Icon(Icons.delete),
-                              onPressed: () => _deleteItem(item.id),
+                              onPressed: () => _confirmDeleteItem(item.id),
                             ),
                           ],
                         ),

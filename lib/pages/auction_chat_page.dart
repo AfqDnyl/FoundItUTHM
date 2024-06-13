@@ -131,6 +131,17 @@ class _AuctionChatPageState extends State<AuctionChatPage> {
         .doc(itemId)
         .update({'paymentDone': true});
     print('Payment marked as done in Firestore'); // Debugging line
+
+    // Remove related auction bot announcement
+    await FirebaseFirestore.instance
+        .collection('announcements')
+        .where('title', isEqualTo: 'Upcoming Auction for ${widget.itemId} at ${widget.itemId}')
+        .get()
+        .then((snapshot) {
+      for (var doc in snapshot.docs) {
+        doc.reference.delete();
+      }
+    });
   }
 
   @override

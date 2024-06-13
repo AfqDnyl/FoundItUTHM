@@ -36,7 +36,7 @@ class _AnnouncementPageState extends State<AnnouncementPage> {
   }
 
   Future<void> _startAuctionTimer() async {
-    _auctionTimer = Timer.periodic(Duration(seconds: 10), (timer) async {
+    _auctionTimer = Timer.periodic(Duration(seconds: 1), (timer) async {
       await _fetchUpcomingAuctions();
     });
   }
@@ -204,8 +204,31 @@ class _AnnouncementPageState extends State<AnnouncementPage> {
   }
 
   void _deleteAnnouncement(String id) {
-    FirebaseFirestore.instance.collection('announcements').doc(id).delete();
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Announcement deleted!')));
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Delete Announcement'),
+          content: Text('Are you sure you want to delete this announcement?'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.of(context).pop();
+                await FirebaseFirestore.instance.collection('announcements').doc(id).delete();
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Announcement deleted!')));
+              },
+              child: Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void _showPostAnnouncementDialog(BuildContext context) {
