@@ -31,6 +31,57 @@ class _RegisterPageState extends State<RegisterPage> {
       });
 
       try {
+        // Check if email or phone number already exists
+        QuerySnapshot emailSnapshot = await FirebaseFirestore.instance
+            .collection('users')
+            .where('email', isEqualTo: _emailController.text)
+            .get();
+
+        QuerySnapshot phoneSnapshot = await FirebaseFirestore.instance
+            .collection('users')
+            .where('phone', isEqualTo: _phoneController.text)
+            .get();
+
+        if (emailSnapshot.docs.isNotEmpty) {
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: Text('Registration Failed'),
+              content: Text('The email address is already in use.'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text('OK'),
+                ),
+              ],
+            ),
+          );
+          setState(() {
+            _isLoading = false;
+          });
+          return;
+        }
+
+        if (phoneSnapshot.docs.isNotEmpty) {
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: Text('Registration Failed'),
+              content: Text('The phone number is already in use.'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text('OK'),
+                ),
+              ],
+            ),
+          );
+          setState(() {
+            _isLoading = false;
+          });
+          return;
+        }
+
         UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
           email: _emailController.text,
           password: _passwordController.text,

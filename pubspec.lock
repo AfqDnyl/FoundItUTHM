@@ -374,14 +374,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.0.20"
-  flutter_qr_reader:
-    dependency: "direct main"
-    description:
-      name: flutter_qr_reader
-      sha256: "201168208410ce74b2e5b05b28aace2af3baf6946e90c784b089eb6a33876246"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.0.5"
   flutter_test:
     dependency: "direct dev"
     description: flutter
@@ -784,14 +776,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.1"
-  qr_code_tools:
-    dependency: "direct main"
-    description:
-      name: qr_code_tools
-      sha256: "79b693f312d99b9917585e409678969e4d2d2d32f9bd43650290cd719486964e"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.1.0"
   qr_flutter:
     dependency: "direct main"
     description:

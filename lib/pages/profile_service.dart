@@ -38,4 +38,22 @@ class ProfileService {
     final doc = await _firestore.collection('users').doc(user.uid).get();
     return doc.data();
   }
+
+  Future<bool> checkIfPhoneExists(String phone) async {
+    final user = _auth.currentUser;
+    final querySnapshot = await _firestore
+        .collection('users')
+        .where('phone', isEqualTo: phone)
+        .get();
+    
+    // Check if any other document exists with the same phone number
+    if (querySnapshot.docs.isNotEmpty) {
+      for (var doc in querySnapshot.docs) {
+        if (doc.id != user!.uid) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
 }

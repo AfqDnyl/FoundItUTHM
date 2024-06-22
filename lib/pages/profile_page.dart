@@ -15,6 +15,7 @@ class _ProfilePageState extends State<ProfilePage> {
   final TextEditingController _phoneController = TextEditingController();
   File? _image;
   bool isLoading = false;
+  bool isEditing = false;
   final _formKey = GlobalKey<FormState>();
   final ProfileService _profileService = ProfileService();
 
@@ -39,9 +40,16 @@ class _ProfilePageState extends State<ProfilePage> {
           imageUrl = await _profileService.uploadProfileImage(_image!);
         }
 
-        await _profileService.updateProfile(_nameController.text, _phoneController.text, imageUrl);
-
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Profile updated successfully!')));
+        bool phoneExists = await _profileService.checkIfPhoneExists(_phoneController.text);
+        if (phoneExists) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Phone number is already in use')));
+        } else {
+          await _profileService.updateProfile(_nameController.text, _phoneController.text, imageUrl);
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Profile updated successfully!')));
+          setState(() {
+            isEditing = false;
+          });
+        }
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to update profile: $e')));
       } finally {
@@ -79,7 +87,23 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('My Profile')),
+      appBar: AppBar(
+        title: Text('My Profile'),
+        actions: [
+          IconButton(
+            icon: Icon(isEditing ? Icons.save : Icons.edit),
+            onPressed: () {
+              if (isEditing) {
+                _updateProfile();
+              } else {
+                setState(() {
+                  isEditing = true;
+                });
+              }
+            },
+          ),
+        ],
+      ),
       body: isLoading
           ? Center(child: CircularProgressIndicator())
           : Padding(
@@ -114,6 +138,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     TextFormField(
                       controller: _nameController,
                       decoration: InputDecoration(labelText: 'Name'),
+                      enabled: isEditing,
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Please enter your name';
@@ -130,6 +155,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         FilteringTextInputFormatter.digitsOnly,
                         LengthLimitingTextInputFormatter(11),
                       ],
+                      enabled: isEditing,
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Please enter your phone number';
@@ -141,10 +167,6 @@ class _ProfilePageState extends State<ProfilePage> {
                       },
                     ),
                     SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: isLoading ? null : _updateProfile,
-                      child: isLoading ? CircularProgressIndicator() : Text('Update Profile'),
-                    ),
                   ],
                 ),
               ),
