@@ -81,7 +81,7 @@ class _ReportStatisticsPageState extends State<ReportStatisticsPage> {
                         children: [
                           RepaintBoundary(
                             key: _itemTypeChartKey,
-                            child: _buildPieChart(context, 'Item Types Reported', lostItems + foundItems, 'itemType'),
+                            child: _buildPieChart(context, 'Item Types Reported', lostItems, 'itemType', foundItems, 'itemType'),
                           ),
                           RepaintBoundary(
                             key: _locationChartKey,
@@ -320,7 +320,7 @@ class _ReportStatisticsPageState extends State<ReportStatisticsPage> {
       final itemData = item.data() as Map<String, dynamic>?;
       if (itemData == null) return false;
 
-      final location = itemData['lastLocation']?.toLowerCase() ?? '';
+      final location = itemData['lastLocation']?.toLowerCase() ?? itemData['foundLocation']?.toLowerCase() ?? '';
       final itemType = itemData['itemType']?.toLowerCase() ?? '';
       final matchesSearchQuery = searchQuery.isEmpty || itemData.values.any((value) => value.toString().toLowerCase().contains(searchQuery));
       final matchesLocationFilter = selectedLocationFilter == 'All' || location == selectedLocationFilter.toLowerCase();
@@ -330,22 +330,22 @@ class _ReportStatisticsPageState extends State<ReportStatisticsPage> {
     }).toList();
   }
 
-  Widget _buildPieChart(BuildContext context, String title, List<DocumentSnapshot> items, String field, [List<DocumentSnapshot>? additionalItems, String? additionalField]) {
+  Widget _buildPieChart(BuildContext context, String title, List<DocumentSnapshot> lostItems, String lostField, [List<DocumentSnapshot>? foundItems, String? foundField]) {
     final Map<String, int> dataMap = {};
 
-    for (var item in items) {
+    for (var item in lostItems) {
       final itemData = item.data() as Map<String, dynamic>?;
-      String value = itemData?.containsKey(field) == true ? itemData![field] : 'Unknown';
+      String value = itemData?.containsKey(lostField) == true ? itemData![lostField] : 'Unknown';
       if (!dataMap.containsKey(value)) {
         dataMap[value] = 0;
       }
       dataMap[value] = dataMap[value]! + 1;
     }
 
-    if (additionalItems != null && additionalField != null) {
-      for (var item in additionalItems) {
+    if (foundItems != null && foundField != null) {
+      for (var item in foundItems) {
         final itemData = item.data() as Map<String, dynamic>?;
-        String value = itemData?.containsKey(additionalField) == true ? itemData![additionalField] : 'Unknown';
+        String value = itemData?.containsKey(foundField) == true ? itemData![foundField] : 'Unknown';
         if (!dataMap.containsKey(value)) {
           dataMap[value] = 0;
         }
