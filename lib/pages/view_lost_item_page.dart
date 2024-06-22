@@ -21,6 +21,7 @@ class _ViewLostItemsPageState extends State<ViewLostItemsPage> {
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _contactInfoController = TextEditingController();
   String _itemType = 'All';
+  String _editItemType = 'All'; // New variable for edit dialog
   String _location = 'All';
   String _postOwner = 'All';
   File? _image;
@@ -68,7 +69,7 @@ class _ViewLostItemsPageState extends State<ViewLostItemsPage> {
             'itemName': _itemNameController.text,
             'description': _descriptionController.text,
             'contactInfo': _contactInfoController.text,
-            'itemType': _itemType,
+            'itemType': _editItemType, // Use _editItemType for updating item
             if (downloadUrl != null) 'imageUrl': downloadUrl,
           });
 
@@ -156,7 +157,7 @@ class _ViewLostItemsPageState extends State<ViewLostItemsPage> {
       _itemNameController.text = data['itemName'];
       _descriptionController.text = data['description'];
       _contactInfoController.text = data['contactInfo'];
-      _itemType = data['itemType'];
+      _editItemType = data['itemType']; // Use _editItemType
       _image = null; // Reset image selection
     });
 
@@ -198,23 +199,26 @@ class _ViewLostItemsPageState extends State<ViewLostItemsPage> {
                         controller: _contactInfoController,
                         decoration: InputDecoration(labelText: 'Contact Information'),
                         keyboardType: TextInputType.phone,
-                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                          LengthLimitingTextInputFormatter(11)
+                          ],
                         validator: (value) {
                           if (value == null || value.isEmpty) {
                             return 'Please enter contact information';
                           }
-                          if (value.length < 9 || value.length > 12) {
-                            return 'Please enter a valid phone number (9-12 digits)';
+                          if (value.length < 10 || value.length > 11) {
+                            return 'Please enter a valid phone number (10-11 digits)';
                           }
                           return null;
                         },
                       ),
                       SizedBox(height: 16),
                       DropdownButtonFormField<String>(
-                        value: _itemType,
+                        value: _editItemType, // Use _editItemType
                         onChanged: (String? newValue) {
                           setState(() {
-                            _itemType = newValue!;
+                            _editItemType = newValue!;
                           });
                         },
                         items: itemTypes.map<DropdownMenuItem<String>>((String value) {

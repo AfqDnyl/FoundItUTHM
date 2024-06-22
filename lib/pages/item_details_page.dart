@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:image_gallery_saver/image_gallery_saver.dart';
+import 'package:printing/printing.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
 
 class ItemDetailsPage extends StatelessWidget {
   final String itemName;
@@ -22,7 +25,7 @@ class ItemDetailsPage extends StatelessWidget {
 
   Future<void> _saveQrCodeToGallery(BuildContext context) async {
     try {
-      if (await Permission.storage.request().isGranted) {
+      if (await Permission.storage.request().isGranted || await Permission.manageExternalStorage.request().isGranted) {
         // Create a QR code painter
         final qrPainter = QrPainter(
           data: itemId,
@@ -48,44 +51,7 @@ class ItemDetailsPage extends StatelessWidget {
           name: itemName,
         );
 
-        if (result['isSuccess']) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('QR code saved to gallery successfully.')),
-          );
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to save QR code to gallery.')),
-          );
-        }
-      } else if (await Permission.manageExternalStorage.request().isGranted) {
-        // Handle MANAGE_EXTERNAL_STORAGE permission
-        // This permission allows more extensive access to external storage
-        // Ensure you handle this correctly and update the logic as needed.
-        final qrPainter = QrPainter(
-          data: itemId,
-          version: QrVersions.auto,
-          gapless: false,
-          color: Color(0xFF000000),
-          emptyColor: Color(0xFFFFFFFF),
-        );
-
-        // Render the QR code to an image
-        final pictureRecorder = ui.PictureRecorder();
-        final canvas = Canvas(pictureRecorder);
-        final size = Size(300, 300);
-        qrPainter.paint(canvas, size);
-        final image = await pictureRecorder.endRecording().toImage(300, 300);
-        final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-        final pngBytes = byteData!.buffer.asUint8List();
-
-        // Save the image to the gallery
-        final result = await ImageGallerySaver.saveImage(
-          Uint8List.fromList(pngBytes),
-          quality: 100,
-          name: itemName,
-        );
-
-        if (result['isSuccess']) {
+        if (result['isSuccess'] || result['isSuccess'] == true) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('QR code saved to gallery successfully.')),
           );
@@ -102,6 +68,60 @@ class ItemDetailsPage extends StatelessWidget {
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error saving QR code: $e')),
+      );
+    }
+  }
+
+  Future<void> _printQrCode(BuildContext context) async {
+    try {
+      // Create a QR code painter
+      final qrPainter = QrPainter(
+        data: itemId,
+        version: QrVersions.auto,
+        gapless: false,
+        color: Color(0xFF000000),
+        emptyColor: Color(0xFFFFFFFF),
+      );
+
+      // Render the QR code to an image
+      final pictureRecorder = ui.PictureRecorder();
+      final canvas = Canvas(pictureRecorder);
+      final size = Size(300, 300);
+      qrPainter.paint(canvas, size);
+      final image = await pictureRecorder.endRecording().toImage(300, 300);
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      final pngBytes = byteData!.buffer.asUint8List();
+
+      // Create a PDF document
+      final pdf = pw.Document();
+      final pdfImage = pw.MemoryImage(pngBytes);
+
+      pdf.addPage(
+        pw.Page(
+          build: (pw.Context context) {
+            return pw.Center(
+              child: pw.Column(
+                mainAxisAlignment: pw.MainAxisAlignment.center,
+                children: [
+                  pw.Text(itemName, style: pw.TextStyle(fontSize: 24)),
+                  pw.SizedBox(height: 16),
+                  pw.Image(pdfImage, width: 300, height: 300),
+                  pw.SizedBox(height: 16),
+                  pw.Text(description, style: pw.TextStyle(fontSize: 16)),
+                  pw.SizedBox(height: 8),
+                  pw.Text('Contact Info: $contactInfo', style: pw.TextStyle(fontSize: 16)),
+                ],
+              ),
+            );
+          },
+        ),
+      );
+
+      // Print the PDF document
+      await Printing.layoutPdf(onLayout: (PdfPageFormat format) async => pdf.save());
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error printing QR code: $e')),
       );
     }
   }
@@ -168,9 +188,19 @@ class ItemDetailsPage extends StatelessWidget {
                   ),
                   SizedBox(height: 16),
                   Center(
-                    child: ElevatedButton(
-                      onPressed: () => _saveQrCodeToGallery(context),
-                      child: Text('Save QR Code to Gallery'),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        ElevatedButton(
+                          onPressed: () => _saveQrCodeToGallery(context),
+                          child: Text('Save QR Code to Gallery'),
+                        ),
+                        SizedBox(width: 16),
+                        ElevatedButton(
+                          onPressed: () => _printQrCode(context),
+                          child: Text('Print QR Code'),
+                        ),
+                      ],
                     ),
                   ),
                 ],

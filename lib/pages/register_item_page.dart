@@ -113,7 +113,7 @@ class _RegisterItemPageState extends State<RegisterItemPage> {
     if (value == null || value.isEmpty) {
       return 'Please enter contact information';
     }
-    final RegExp phoneExp = RegExp(r'^\d{9,12}$');
+    final RegExp phoneExp = RegExp(r'^\d{10,11}$');
     if (!phoneExp.hasMatch(value)) {
       return 'Please enter a valid phone number';
     }
@@ -149,7 +149,10 @@ class _RegisterItemPageState extends State<RegisterItemPage> {
                     controller: _contactInfoController,
                     decoration: InputDecoration(labelText: 'Contact Information'),
                     keyboardType: TextInputType.phone,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      LengthLimitingTextInputFormatter(11)
+                    ],
                     validator: _validatePhoneNumber,
                   ),
                   SizedBox(height: 16),

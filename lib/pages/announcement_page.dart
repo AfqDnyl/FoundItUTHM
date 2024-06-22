@@ -259,7 +259,12 @@ class _AnnouncementPageState extends State<AnnouncementPage> {
                     ),
                     SizedBox(height: 16),
                     ElevatedButton(
-                      onPressed: _pickImage,
+                      onPressed: () async {
+                        final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
+                        setState(() {
+                          _imageFile = pickedFile;
+                        });
+                      },
                       child: Text('Select Image'),
                     ),
                     _imageFile == null

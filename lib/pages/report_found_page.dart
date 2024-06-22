@@ -200,13 +200,16 @@ class _ReportFoundPageState extends State<ReportFoundPage> {
                       if (value!.isEmpty) {
                         return 'Please enter contact information';
                       }
-                      if (value.length < 9 || value.length > 12) {
-                        return 'Phone number must be between 9-12 digits';
+                      if (value.length < 10 || value.length > 11) {
+                        return 'Phone number must be between 10-11 digits';
                       }
                       return null;
                     },
                     keyboardType: TextInputType.phone,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      LengthLimitingTextInputFormatter(11)
+                      ],
                     decoration: InputDecoration(labelText: 'Contact Information'),
                   ),
                   SizedBox(height: 16),

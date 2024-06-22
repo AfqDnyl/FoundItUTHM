@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/services.dart';
 import 'package:testnew/pages/login_page.dart';
 
 class RegisterPage extends StatefulWidget {
@@ -166,6 +167,12 @@ class _RegisterPageState extends State<RegisterPage> {
                       if (value == null || value.isEmpty) {
                         return 'Please enter your password';
                       }
+                      if (value.length < 8) {
+                        return 'Password must be at least 8 characters long';
+                      }
+                      if (!RegExp(r'^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$').hasMatch(value)) {
+                        return 'Password must contain letters and numbers';
+                      }
                       return null;
                     },
                   ),
@@ -203,6 +210,11 @@ class _RegisterPageState extends State<RegisterPage> {
                   SizedBox(height: 16),
                   TextFormField(
                     controller: _phoneController,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: <TextInputFormatter>[
+                      FilteringTextInputFormatter.digitsOnly,
+                      LengthLimitingTextInputFormatter(11), // Limit length to 11 digits
+                    ],
                     decoration: InputDecoration(
                       labelText: 'Phone Number',
                       border: OutlineInputBorder(
@@ -213,6 +225,9 @@ class _RegisterPageState extends State<RegisterPage> {
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'Please enter your phone number';
+                      }
+                      if (value.length < 10 || value.length > 11) {
+                        return 'Phone number must be between 10 to 11 digits';
                       }
                       return null;
                     },

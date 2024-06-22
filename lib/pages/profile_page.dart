@@ -128,13 +128,13 @@ class _ProfilePageState extends State<ProfilePage> {
                       keyboardType: TextInputType.phone,
                       inputFormatters: [
                         FilteringTextInputFormatter.digitsOnly,
-                        LengthLimitingTextInputFormatter(12),
+                        LengthLimitingTextInputFormatter(11),
                       ],
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Please enter your phone number';
                         }
-                        if (value.length < 9 || value.length > 12) {
+                        if (value.length < 10 || value.length > 11) {
                           return 'Please enter a valid phone number';
                         }
                         return null;
